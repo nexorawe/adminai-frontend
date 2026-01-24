@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AIWriter from "./pages/AIWriter";
+import GmailInbox from "./pages/GmailInbox";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/ai-writer" element={<AIWriter />} />
+      <Route path="/gmail" element={<GmailInbox />} />
     </Routes>
   );
 }
