@@ -1,4 +1,10 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import { setUpgradeHandler } from "./services/api";
+import { useUpgrade } from "./context/UpgradeContext";
+
+// Pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -7,19 +13,76 @@ import GmailInbox from "./pages/GmailInbox";
 import Pricing from "./pages/Pricing";
 import BillingSuccess from "./pages/BillingSuccess";
 
-function App() {
+// ✅ Protected Route wrapper
+function PrivateRoute({ children }) {
+  const token = localStorage.getItem("token");
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
+}
+
+export default function App() {
+  const { showUpgrade } = useUpgrade();
+
+  // ✅ register global upgrade handler for Axios 402 responses
+  useEffect(() => {
+    setUpgradeHandler(showUpgrade);
+  }, [showUpgrade]);
+
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
+      {/* Public */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/ai-writer" element={<AIWriter />} />
-      <Route path="/gmail" element={<GmailInbox />} />
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/billing/success" element={<BillingSuccess />} />
+
+      {/* Protected */}
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/ai-writer"
+        element={
+          <PrivateRoute>
+            <AIWriter />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/gmail"
+        element={
+          <PrivateRoute>
+            <GmailInbox />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/pricing"
+        element={
+          <PrivateRoute>
+            <Pricing />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/billing/success"
+        element={
+          <PrivateRoute>
+            <BillingSuccess />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Default */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
-
-export default App;
