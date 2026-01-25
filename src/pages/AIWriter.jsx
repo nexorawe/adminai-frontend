@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import UpgradeModal from "../components/UpgradeModal";
 
 export default function AIWriter() {
   const [type, setType] = useState("Email Reply");
@@ -9,6 +10,10 @@ export default function AIWriter() {
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Upgrade modal
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState("");
 
   const loadHistory = async () => {
     try {
@@ -39,7 +44,15 @@ export default function AIWriter() {
       // ✅ refresh history after generation
       await loadHistory();
     } catch (err) {
-      alert(err.response?.data?.detail || "AI generation failed");
+      const status = err.response?.status;
+      const msg = err.response?.data?.detail || "AI generation failed";
+
+      if (status === 402) {
+        setUpgradeMsg(msg);
+        setUpgradeOpen(true);
+      } else {
+        alert(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -156,6 +169,13 @@ export default function AIWriter() {
           ))}
         </div>
       )}
+
+      {/* ✅ Upgrade Modal */}
+      <UpgradeModal
+        open={upgradeOpen}
+        message={upgradeMsg}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </div>
   );
 }

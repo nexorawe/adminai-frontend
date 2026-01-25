@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import UpgradeModal from "../components/UpgradeModal";
 
 export default function GmailInbox() {
   const [emails, setEmails] = useState([]);
@@ -16,6 +17,10 @@ export default function GmailInbox() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Upgrade modal
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState("");
 
   const connectGmail = async () => {
     try {
@@ -79,7 +84,15 @@ export default function GmailInbox() {
 
       setReplyText(res.data?.reply || "");
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to generate reply");
+      const status = err.response?.status;
+      const msg = err.response?.data?.detail || "Failed to generate reply";
+
+      if (status === 402) {
+        setUpgradeMsg(msg);
+        setUpgradeOpen(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setGenerating(false);
     }
@@ -155,12 +168,8 @@ export default function GmailInbox() {
                 }}
               >
                 <strong>{e.subject || "(No Subject)"}</strong>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  {e.from}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {e.snippet}
-                </div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>{e.from}</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>{e.snippet}</div>
               </div>
             ))
           )}
@@ -220,7 +229,10 @@ export default function GmailInbox() {
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <label>Tone:</label>
-                <select value={replyTone} onChange={(e) => setReplyTone(e.target.value)}>
+                <select
+                  value={replyTone}
+                  onChange={(e) => setReplyTone(e.target.value)}
+                >
                   <option>Professional</option>
                   <option>Friendly</option>
                   <option>Short</option>
@@ -241,7 +253,10 @@ export default function GmailInbox() {
               />
 
               <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-                <button onClick={sendReply} disabled={sending || !replyText.trim()}>
+                <button
+                  onClick={sendReply}
+                  disabled={sending || !replyText.trim()}
+                >
                   {sending ? "Sending..." : "Send Reply"}
                 </button>
 
@@ -259,6 +274,13 @@ export default function GmailInbox() {
           )}
         </div>
       </div>
+
+      {/* ✅ Upgrade Modal */}
+      <UpgradeModal
+        open={upgradeOpen}
+        message={upgradeMsg}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </div>
   );
 }
