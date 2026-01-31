@@ -1,56 +1,98 @@
 import { useState } from "react";
-import api from "../services/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+
+import api from "@/services/api";
+import AuthLayout from "@/components/AuthLayout";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function Register() {
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
   });
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       await api.post("/auth/register", form);
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.detail || "Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Register</h2>
+    <AuthLayout title="Create your account" subtitle="Start using AdminAI in minutes">
+      <form onSubmit={submit} className="space-y-5">
+        <div className="space-y-2">
+          <Label className="text-sm">Name</Label>
+          <Input
+            className="h-11"
+            placeholder="Your name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            autoComplete="name"
+          />
+        </div>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="space-y-2">
+          <Label className="text-sm">Email</Label>
+          <Input
+            className="h-11"
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+            autoComplete="email"
+          />
+        </div>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Name"
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <br />
+        <div className="space-y-2">
+          <Label className="text-sm">Password</Label>
+          <Input
+            className="h-11"
+            type="password"
+            placeholder="Minimum 6 characters"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+            autoComplete="new-password"
+          />
+        </div>
 
-        <input
-          placeholder="Email"
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <br />
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
+            {error}
+          </div>
+        )}
 
-        <input
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
-        <br />
+        <Button type="submit" className="w-full h-11 rounded-xl" disabled={loading}>
+          {loading ? "Creating..." : "Create account"}
+        </Button>
 
-        <button type="submit">Register</button>
+        <div className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link to="/login" className="text-foreground underline underline-offset-4">
+            Login
+          </Link>
+        </div>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

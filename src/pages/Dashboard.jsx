@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+
+import api from "@/services/api";
+import AppLayout from "@/components/AppLayout";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+import { Mail, PenLine, CreditCard, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -9,56 +18,46 @@ export default function Dashboard() {
   const [plan, setPlan] = useState("free");
 
   const [usage, setUsage] = useState(null);
-
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
 
+    try {
+      const u = localStorage.getItem("user");
+      if (u) setUser(JSON.parse(u));
+    } catch {
+      setUser(null);
+    }
+
+    try {
+      const billingRes = await api.get("/billing/me");
+      setPlan(billingRes.data?.plan || "free");
+    } catch {
+      setPlan("free");
+    }
+
+    try {
+      const usageRes = await api.get("/usage/me");
+      setUsage(usageRes.data || null);
+    } catch {
+      setUsage(null);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
     }
-
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        setUser(null);
-      }
-    }
-
-    const loadAll = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const billingRes = await api.get("/billing/me");
-        setPlan(billingRes.data?.plan || "free");
-      } catch {
-        setPlan("free");
-      }
-
-      try {
-        const usageRes = await api.get("/usage/me");
-        setUsage(usageRes.data || null);
-      } catch {
-        setUsage(null);
-      }
-
-      setLoading(false);
-    };
-
-    loadAll();
+    loadData();
   }, [navigate]);
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
 
   const openBillingPortal = async () => {
     setError("");
@@ -75,136 +74,193 @@ export default function Dashboard() {
     }
   };
 
-  const badgeStyle = {
-    padding: "4px 12px",
-    borderRadius: 999,
-    border: "1px solid #444",
-    fontSize: 12,
-    marginLeft: 10,
-  };
-
-  const cardStyle = {
-    border: "1px solid #333",
-    borderRadius: 14,
-    padding: 15,
-    marginTop: 15,
-  };
-
-  const renderUsageBar = (label, used, limit) => {
-    const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+  const usageRow = (label, used = 0, limit = 0) => {
+    const pct = limit > 0 ? Math.min(Math.round((used / limit) * 100), 100) : 0;
+    const remaining = Math.max(limit - used, 0);
 
     return (
-      <div style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <b>{label}</b>
-          <span style={{ opacity: 0.85 }}>
-            {used}/{limit}
-          </span>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <div className="font-medium">{label}</div>
+          <div className="text-muted-foreground">
+            {used}/{limit} • {remaining} left
+          </div>
         </div>
 
-        <div
-          style={{
-            height: 10,
-            background: "#222",
-            borderRadius: 999,
-            overflow: "hidden",
-            marginTop: 6,
-          }}
-        >
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
           <div
-            style={{
-              height: "100%",
-              width: `${pct}%`,
-              background: pct >= 90 ? "#ff3b30" : pct >= 70 ? "#ff9500" : "#34c759",
-            }}
+            className={`h-full ${
+              pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-yellow-500" : "bg-green-500"
+            }`}
+            style={{ width: `${pct}%` }}
           />
-        </div>
-
-        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 5 }}>
-          Remaining: <b>{Math.max(limit - used, 0)}</b>
         </div>
       </div>
     );
   };
 
   return (
-    <div style={{ padding: 30, maxWidth: 950, margin: "0 auto" }}>
-      <h2>
-        Dashboard
-        <span style={badgeStyle}>{plan.toUpperCase()}</span>
-      </h2>
-
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <>
-          <p style={{ marginTop: 10 }}>
-            Welcome <b>{user?.name || "User"}</b>
-          </p>
-          <p style={{ opacity: 0.85 }}>
-            Email: <b>{user?.email || "-"}</b>
-          </p>
-
-          {error && (
-            <p style={{ color: "red", marginTop: 10 }}>
-              {error}
+    <AppLayout>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Welcome back {user?.name ? `, ${user.name}` : ""} 👋
             </p>
-          )}
 
-          {/* Actions */}
-          <div style={cardStyle}>
-            <h3 style={{ marginTop: 0 }}>Quick Actions</h3>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-              <button onClick={() => navigate("/ai-writer")}>AI Writer</button>
-              <button onClick={() => navigate("/gmail")}>Gmail Inbox</button>
-              <button onClick={() => navigate("/pricing")}>Pricing</button>
-
-              {plan === "pro" ? (
-                <button onClick={openBillingPortal}>Manage Billing</button>
-              ) : (
-                <button onClick={() => navigate("/pricing")}>Upgrade to Pro</button>
-              )}
-
-              <button onClick={logout}>Logout</button>
+            <div className="flex items-center gap-2 mt-3">
+              <Badge variant={plan === "pro" ? "default" : "secondary"}>
+                {plan.toUpperCase()}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                {user?.email || ""}
+              </span>
             </div>
           </div>
 
-          {/* Usage */}
-          <div style={cardStyle}>
-            <h3 style={{ marginTop: 0 }}>Daily Usage</h3>
-
-            {!usage ? (
-              <p style={{ opacity: 0.85 }}>Usage data not available.</p>
+          <div className="flex gap-2">
+            {plan === "pro" ? (
+              <Button variant="outline" onClick={openBillingPortal}>
+                <CreditCard className="mr-2" size={16} />
+                Manage Billing
+              </Button>
             ) : (
-              <>
-                {renderUsageBar(
-                  "AI Writer",
-                  usage.used?.ai_generate ?? 0,
-                  usage.limits?.ai_generate ?? 0
-                )}
-
-                {renderUsageBar(
-                  "Gmail AI Replies",
-                  usage.used?.gmail_generate_reply ?? 0,
-                  usage.limits?.gmail_generate_reply ?? 0
-                )}
-
-                {plan !== "pro" && (
-                  <div style={{ marginTop: 15 }}>
-                    <p style={{ color: "#cc8800" }}>
-                      Upgrade to Pro to unlock higher limits.
-                    </p>
-                    <button onClick={() => navigate("/pricing")}>
-                      Upgrade to Pro
-                    </button>
-                  </div>
-                )}
-              </>
+              <Button onClick={() => navigate("/pricing")}>
+                <Sparkles className="mr-2" size={16} />
+                Upgrade to Pro
+              </Button>
             )}
           </div>
-        </>
-      )}
-    </div>
+        </div>
+
+        {error && (
+          <Card className="border-red-200">
+            <CardContent className="p-4 text-red-600 text-sm">
+              {error}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Usage */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Daily Usage</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your daily quota resets every 24 hours (UTC).
+                </p>
+              </div>
+
+              <Button variant="outline" size="sm" onClick={loadData}>
+                Refresh
+              </Button>
+            </div>
+
+            <Separator className="my-5" />
+
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading usage...</p>
+            ) : !usage ? (
+              <p className="text-sm text-muted-foreground">
+                Usage data is not available.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PenLine size={18} />
+                        <div className="font-semibold">AI Writer</div>
+                      </div>
+                      <Badge variant="secondary">Today</Badge>
+                    </div>
+
+                    {usageRow(
+                      "AI Generations",
+                      usage.used?.ai_generate ?? 0,
+                      usage.limits?.ai_generate ?? 0
+                    )}
+
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => navigate("/ai-writer")}
+                    >
+                      Open AI Writer
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mail size={18} />
+                        <div className="font-semibold">Gmail AI Replies</div>
+                      </div>
+                      <Badge variant="secondary">Today</Badge>
+                    </div>
+
+                    {usageRow(
+                      "Replies Generated",
+                      usage.used?.gmail_generate_reply ?? 0,
+                      usage.limits?.gmail_generate_reply ?? 0
+                    )}
+
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => navigate("/gmail")}
+                    >
+                      Open Gmail Inbox
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border cursor-pointer hover:shadow-sm transition" onClick={() => navigate("/ai-writer")}>
+            <CardContent className="p-5 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <PenLine size={18} /> AI Writer
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Create business emails, proposals, announcements instantly.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border cursor-pointer hover:shadow-sm transition" onClick={() => navigate("/gmail")}>
+            <CardContent className="p-5 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <Mail size={18} /> Gmail Inbox
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Read your inbox and generate replies in seconds.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border cursor-pointer hover:shadow-sm transition" onClick={() => navigate("/pricing")}>
+            <CardContent className="p-5 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <CreditCard size={18} /> Pricing
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Pro for higher limits and full productivity.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AppLayout>
   );
 }
